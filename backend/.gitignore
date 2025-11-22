@@ -1,0 +1,6 @@
+# Backend files
+*.db
+*.db-journal
+
+# Dependencies
+node_modules/
