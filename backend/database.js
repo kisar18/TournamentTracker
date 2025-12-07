@@ -37,6 +37,17 @@ const initDB = async () => {
     )
   `);
 
+  // Create players table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS players (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tournament_id INTEGER NOT NULL,
+      jmeno TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
+    )
+  `);
+
   saveDB();
   console.log('✅ Databáze inicializována');
 };

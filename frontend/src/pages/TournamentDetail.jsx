@@ -6,11 +6,15 @@ function TournamentDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [tournament, setTournament] = useState(null);
+  const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [newPlayerName, setNewPlayerName] = useState('');
+  const [notification, setNotification] = useState({ message: '', type: '' });
 
   useEffect(() => {
     fetchTournament();
+    fetchPlayers();
   }, [id]);
 
   const fetchTournament = async () => {
@@ -27,6 +31,72 @@ function TournamentDetail() {
       setError('Chyba při načítání turnaje');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPlayers = async () => {
+    try {
+      const response = await fetch(`http://localhost:3000/api/tournaments/${id}/players`);
+      if (response.ok) {
+        const data = await response.json();
+        setPlayers(data);
+      }
+    } catch (error) {
+      console.error('Error fetching players:', error);
+    }
+  };
+
+  const handleAddPlayer = async (e) => {
+    e.preventDefault();
+    
+    if (!newPlayerName.trim()) {
+      setNotification({ message: 'Prosím zadejte jméno hráče', type: 'error' });
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3000/api/tournaments/${id}/players`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jmeno: newPlayerName })
+      });
+
+      if (response.ok) {
+        const newPlayer = await response.json();
+        setPlayers([...players, newPlayer]);
+        setNewPlayerName('');
+        setNotification({ message: 'Hráč byl úspěšně přidán', type: 'success' });
+        setTimeout(() => setNotification({ message: '', type: '' }), 3000);
+      } else {
+        const error = await response.json();
+        setNotification({ message: error.error || 'Chyba při přidávání hráče', type: 'error' });
+      }
+    } catch (error) {
+      console.error('Error adding player:', error);
+      setNotification({ message: 'Chyba při spojení se serverem', type: 'error' });
+    }
+  };
+
+  const handleDeletePlayer = async (playerId) => {
+    if (!window.confirm('Opravdu chcete odstranit tohoto hráče?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`http://localhost:3000/api/players/${playerId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        setPlayers(players.filter(p => p.id !== playerId));
+        setNotification({ message: 'Hráč byl úspěšně odstraněn', type: 'success' });
+        setTimeout(() => setNotification({ message: '', type: '' }), 3000);
+      } else {
+        setNotification({ message: 'Chyba při mazání hráče', type: 'error' });
+      }
+    } catch (error) {
+      console.error('Error deleting player:', error);
+      setNotification({ message: 'Chyba při spojení se serverem', type: 'error' });
     }
   };
 
@@ -101,6 +171,21 @@ function TournamentDetail() {
       </div>
 
       <div className="detail-content">
+        {notification.message && (
+          <div className={`notification notification-${notification.type}`}>
+            <span className="notification-icon">
+              {notification.type === 'success' && '✓'}
+              {notification.type === 'error' && '✕'}
+            </span>
+            <span className="notification-message">{notification.message}</span>
+            <button 
+              className="notification-close" 
+              onClick={() => setNotification({ message: '', type: '' })}
+            >
+              ✕
+            </button>
+          </div>
+        )}
         <div className="info-section">
           <h2>Základní informace</h2>
           <div className="info-grid">
@@ -146,6 +231,53 @@ function TournamentDetail() {
             </div>
           </div>
         )}
+
+        <div className="info-section">
+          <div className="section-header">
+            <h2>Hráči ({players.length}/{tournament.maxPocetHracu})</h2>
+          </div>
+          
+          <form onSubmit={handleAddPlayer} className="add-player-form">
+            <div className="form-group-inline">
+              <input
+                type="text"
+                value={newPlayerName}
+                onChange={(e) => setNewPlayerName(e.target.value)}
+                placeholder="Zadejte jméno hráče"
+                className="player-input"
+              />
+              <button 
+                type="submit" 
+                className="btn-add-player"
+                disabled={players.length >= tournament.maxPocetHracu}
+              >
+                + Přidat hráče
+              </button>
+            </div>
+          </form>
+
+          {players.length === 0 ? (
+            <div className="empty-players">
+              <p>Zatím nejsou přidáni žádní hráči</p>
+            </div>
+          ) : (
+            <div className="players-list">
+              {players.map((player, index) => (
+                <div key={player.id} className="player-item">
+                  <span className="player-number">{index + 1}</span>
+                  <span className="player-name">{player.jmeno}</span>
+                  <button
+                    className="btn-remove-player"
+                    onClick={() => handleDeletePlayer(player.id)}
+                    title="Odstranit hráče"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="info-section">
           <h2>Metadata</h2>
