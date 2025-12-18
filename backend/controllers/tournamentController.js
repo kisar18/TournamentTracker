@@ -1,0 +1,120 @@
+import { getDB, saveDB } from '../database.js';
+import { rowsToObjects, rowToObject, getSingleValue } from '../utils/dbHelpers.js';
+
+export const getAllTournaments = (req, res) => {
+  try {
+    const db = getDB();
+    const result = db.exec('SELECT * FROM tournaments ORDER BY datum DESC');
+    const tournaments = rowsToObjects(result);
+    res.json(tournaments);
+  } catch (error) {
+    console.error('Error fetching tournaments:', error);
+    res.status(500).json({ error: 'Chyba při načítání turnajů' });
+  }
+};
+
+export const getTournamentById = (req, res) => {
+  try {
+    const db = getDB();
+    const result = db.exec('SELECT * FROM tournaments WHERE id = ?', [parseInt(req.params.id)]);
+    const tournament = rowToObject(result);
+
+    if (!tournament) {
+      return res.status(404).json({ error: 'Turnaj nenalezen' });
+    }
+
+    res.json(tournament);
+  } catch (error) {
+    console.error('Error fetching tournament:', error);
+    res.status(500).json({ error: 'Chyba při načítání turnaje' });
+  }
+};
+
+export const createTournament = (req, res) => {
+  try {
+    const {
+      nazev: name,
+      typ: type,
+      maxPocetHracu: maxPlayers,
+      datum: date,
+      misto: location,
+      popis: description,
+      pocetStolu: tableCount
+    } = req.body;
+
+    if (!name || !type || !maxPlayers || !date || !location) {
+      return res.status(400).json({ error: 'Chybí povinná pole' });
+    }
+
+    const tables = tableCount ? parseInt(tableCount) : 1;
+    if (Number.isNaN(tables) || tables < 1) {
+      return res.status(400).json({ error: 'Počet stolů musí být alespoň 1' });
+    }
+
+    const db = getDB();
+    db.run(
+      'INSERT INTO tournaments (nazev, typ, maxPocetHracu, datum, misto, popis, pocetStolu) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [name, type, parseInt(maxPlayers), date, location, description || '', tables]
+    );
+    saveDB();
+
+    const result = db.exec('SELECT * FROM tournaments ORDER BY id DESC LIMIT 1');
+    const newTournament = rowToObject(result);
+
+    res.status(201).json(newTournament || { error: 'Chyba při vytváření turnaje' });
+  } catch (error) {
+    console.error('Error creating tournament:', error);
+    res.status(500).json({ error: 'Chyba při vytváření turnaje' });
+  }
+};
+
+export const updateTournament = (req, res) => {
+  try {
+    const {
+      nazev: name,
+      typ: type,
+      maxPocetHracu: maxPlayers,
+      datum: date,
+      misto: location,
+      popis: description,
+      status,
+      pocetStolu: tableCount
+    } = req.body;
+    const db = getDB();
+
+    const tables = tableCount ? parseInt(tableCount) : 1;
+    if (Number.isNaN(tables) || tables < 1) {
+      return res.status(400).json({ error: 'Počet stolů musí být alespoň 1' });
+    }
+
+    db.run(
+      'UPDATE tournaments SET nazev = ?, typ = ?, maxPocetHracu = ?, datum = ?, misto = ?, popis = ?, status = ?, pocetStolu = ? WHERE id = ?',
+      [name, type, parseInt(maxPlayers), date, location, description || '', status || 'nadchazejici', tables, parseInt(req.params.id)]
+    );
+    saveDB();
+
+    const result = db.exec('SELECT * FROM tournaments WHERE id = ?', [parseInt(req.params.id)]);
+    const updatedTournament = rowToObject(result);
+
+    if (!updatedTournament) {
+      return res.status(404).json({ error: 'Turnaj nenalezen' });
+    }
+
+    res.json(updatedTournament);
+  } catch (error) {
+    console.error('Error updating tournament:', error);
+    res.status(500).json({ error: 'Chyba při aktualizaci turnaje' });
+  }
+};
+
+export const deleteTournament = (req, res) => {
+  try {
+    const db = getDB();
+    db.run('DELETE FROM tournaments WHERE id = ?', [parseInt(req.params.id)]);
+    saveDB();
+    res.json({ message: 'Turnaj byl úspěšně smazán' });
+  } catch (error) {
+    console.error('Error deleting tournament:', error);
+    res.status(500).json({ error: 'Chyba při mazání turnaje' });
+  }
+};

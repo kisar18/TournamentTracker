@@ -153,7 +153,7 @@ function TournamentList() {
               
               <div className="tournament-actions">
                 <button className="btn-view" onClick={() => navigate(`/turnaje/${tournament.id}`)}>Zobrazit</button>
-                <button className="btn-edit">Upravit</button>
+                <button className="btn-edit" onClick={() => navigate(`/turnaje/${tournament.id}/upravit`)}>Upravit</button>
                 <button className="btn-delete" onClick={() => handleDelete(tournament.id)}>Smazat</button>
               </div>
             </div>

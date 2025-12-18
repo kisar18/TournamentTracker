@@ -9,7 +9,8 @@ function NewTournament() {
     maxPocetHracu: '',
     datum: '',
     misto: '',
-    popis: ''
+    popis: '',
+    pocetStolu: '1'
   });
   const [notification, setNotification] = useState({ message: '', type: '' }); // 'success', 'error', 'warning'
 
@@ -76,10 +77,20 @@ function NewTournament() {
     if (!formData.maxPocetHracu) missingFields.push('Počet hráčů');
     if (!formData.datum) missingFields.push('Datum konání');
     if (!formData.misto || formData.misto.trim() === '') missingFields.push('Místo konání');
+    if (!formData.pocetStolu) missingFields.push('Počet stolů');
     
     if (missingFields.length > 0) {
       setNotification({
         message: `Prosím vyplňte následující povinná pole:\n${missingFields.join(', ')}`,
+        type: 'error'
+      });
+      return;
+    }
+
+    const stolCount = parseInt(formData.pocetStolu);
+    if (Number.isNaN(stolCount) || stolCount < 1) {
+      setNotification({
+        message: 'Počet stolů musí být alespoň 1',
         type: 'error'
       });
       return;
@@ -315,6 +326,20 @@ function NewTournament() {
                 onChange={handleChange}
                 placeholder="např. Sportovní hala Praha"
               />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="pocetStolu">Počet stolů *</label>
+              <input
+                type="number"
+                id="pocetStolu"
+                name="pocetStolu"
+                value={formData.pocetStolu}
+                onChange={handleChange}
+                placeholder="např. 4"
+                min="1"
+              />
+              <small>Zadejte kolik stolů bude k dispozici</small>
             </div>
 
             <div className="form-group">

@@ -32,6 +32,7 @@ const initDB = async () => {
       datum TEXT NOT NULL,
       misto TEXT NOT NULL,
       popis TEXT,
+      pocetStolu INTEGER NOT NULL DEFAULT 1,
       status TEXT DEFAULT 'nadchazejici',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
@@ -47,6 +48,42 @@ const initDB = async () => {
       FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
     )
   `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS matches (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tournament_id INTEGER NOT NULL,
+      round INTEGER NOT NULL,
+      match_number INTEGER NOT NULL,
+      player1_id INTEGER,
+      player2_id INTEGER,
+      player1_score INTEGER DEFAULT 0,
+      player2_score INTEGER DEFAULT 0,
+      winner_id INTEGER,
+      status TEXT DEFAULT 'nehrany',
+      table_number INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
+      FOREIGN KEY (player1_id) REFERENCES players(id) ON DELETE SET NULL,
+      FOREIGN KEY (player2_id) REFERENCES players(id) ON DELETE SET NULL,
+      FOREIGN KEY (winner_id) REFERENCES players(id) ON DELETE SET NULL
+    )
+  `);
+
+  // Migrations: add new columns when missing
+  const hasColumn = (table, column) => {
+    const res = db.exec(`PRAGMA table_info(${table})`);
+    if (!res || !res[0] || !res[0].values) return false;
+    return res[0].values.some(row => row[1] === column);
+  };
+
+  if (!hasColumn('tournaments', 'pocetStolu')) {
+    db.run('ALTER TABLE tournaments ADD COLUMN pocetStolu INTEGER NOT NULL DEFAULT 1');
+  }
+
+  if (!hasColumn('matches', 'table_number')) {
+    db.run('ALTER TABLE matches ADD COLUMN table_number INTEGER');
+  }
 
   saveDB();
   console.log('✅ Databáze inicializována');

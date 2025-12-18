@@ -4,6 +4,7 @@ import Home from './pages/Home';
 import NewTournament from './pages/NewTournament';
 import TournamentList from './pages/TournamentList';
 import TournamentDetail from './pages/TournamentDetail';
+import EditTournament from './pages/EditTournament';
 import './App.css';
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/novy-turnaj" element={<NewTournament />} />
             <Route path="/turnaje" element={<TournamentList />} />
+            <Route path="/turnaje/:id/upravit" element={<EditTournament />} />
             <Route path="/turnaje/:id" element={<TournamentDetail />} />
           </Routes>
         </main>
