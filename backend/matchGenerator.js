@@ -58,6 +58,118 @@ export function generateRoundRobinMatches(players) {
 }
 
 /**
+ * Generate round-robin matches using Berger tables order
+ * @param {Array} players - Array of player objects with id and jmeno
+ * @returns {Array} Array of matches with round and match_number
+ */
+export function generateRoundRobinMatchesBerger(players) {
+  const matches = [];
+  let playerIds = players.map(p => ({ id: p.id, jmeno: p.jmeno }));
+
+  // Add BYE if odd
+  const isOdd = playerIds.length % 2 !== 0;
+  if (isOdd) {
+    playerIds.push({ id: null, jmeno: 'BYE' });
+  }
+
+  const n = playerIds.length;
+  const R = n - 1;
+  const indices = [...Array(n - 1).keys()].map(i => i + 1); // 1..n-1
+
+  // Helper to get player by label (1..n)
+  const getPlayer = (label) => (label === n ? playerIds[n - 1] : playerIds[label - 1]);
+
+  // Build rounds per r using canonical Berger pairing
+  const rounds = [];
+  for (let r = 1; r <= R; r++) {
+    const roundMatches = [];
+    // Team n vs team r
+    const a = getPlayer(n);
+    const b = getPlayer(r);
+    if (a.id !== null && b.id !== null) {
+      roundMatches.push({ player1_id: a.id, player2_id: b.id });
+    }
+
+    // Other pairs
+    for (let i = 1; i <= (n / 2) - 1; i++) {
+      const homeLabel = ((r + i - 2) % (n - 1)) + 1;
+      const awayLabel = ((r - i - 1 + (n - 1)) % (n - 1)) + 1;
+      const p1 = getPlayer(homeLabel);
+      const p2 = getPlayer(awayLabel);
+      if (p1.id !== null && p2.id !== null) {
+        roundMatches.push({ player1_id: p1.id, player2_id: p2.id });
+      }
+    }
+    rounds.push(roundMatches);
+  }
+
+  // Reorder rounds to typical Berger display order: 1, R-1, 2, R, 3, R-2, ...
+  const order = [];
+  let left = 1;
+  let right = R;
+  let toggle = true;
+  while (order.length < R) {
+    order.push(left);
+    left += 1;
+    if (order.length < R) {
+      order.push(right - 1);
+      right -= 1;
+    }
+  }
+
+  let matchNumber = 1;
+  order.forEach((rIndex, roundIdx) => {
+    const rm = rounds[rIndex - 1];
+    rm.forEach(m => {
+      matches.push({
+        round: roundIdx + 1,
+        match_number: matchNumber++,
+        player1_id: m.player1_id,
+        player2_id: m.player2_id,
+        status: 'nehrany'
+      });
+    });
+  });
+
+  return matches;
+}
+
+/**
+ * Generate round-robin matches across multiple groups
+ * Rounds are encoded as (groupIndex+1)*100 + roundInGroup to distinguish groups in UI/standings.
+ * @param {Array} players - Array of player objects with id and jmeno
+ * @param {number} numGroups - Desired number of groups (>=1)
+ * @returns {Array} Array of matches with encoded round and global match_number
+ */
+export function generateGroupedRoundRobinMatches(players, numGroups, scheduleType = 'standard') {
+  const matches = [];
+  const groups = Array.from({ length: Math.max(1, numGroups || 1) }, () => []);
+
+  // Distribute players into groups as evenly as possible
+  players.forEach((player, index) => {
+    groups[index % groups.length].push(player);
+  });
+
+  let globalMatchNumber = 1;
+  groups.forEach((groupPlayers, groupIndex) => {
+    const groupMatches = scheduleType === 'berger'
+      ? generateRoundRobinMatchesBerger(groupPlayers)
+      : generateRoundRobinMatches(groupPlayers);
+    groupMatches.forEach(m => {
+      matches.push({
+        round: (groupIndex + 1) * 100 + m.round,
+        match_number: globalMatchNumber++,
+        player1_id: m.player1_id,
+        player2_id: m.player2_id,
+        status: m.status
+      });
+    });
+  });
+
+  return matches;
+}
+
+/**
  * Generate single elimination bracket matches
  * @param {Array} players - Array of player objects with id and jmeno
  * @returns {Array} Array of matches with round and match_number
@@ -124,18 +236,20 @@ export function generateEliminationMatches(players) {
  * @param {Array} players - Array of player objects with id and jmeno
  * @returns {Array} Array of matches with round and match_number
  */
-export function generateMixedMatches(players) {
+export function generateMixedMatches(players, numGroupsOptional, scheduleType = 'standard') {
   const matches = [];
   const numPlayers = players.length;
 
   // Determine number of groups (2-4 groups depending on player count)
-  let numGroups;
-  if (numPlayers <= 8) {
-    numGroups = 2;
-  } else if (numPlayers <= 16) {
-    numGroups = 4;
-  } else {
-    numGroups = Math.min(8, Math.ceil(numPlayers / 4));
+  let numGroups = numGroupsOptional && numGroupsOptional > 0 ? numGroupsOptional : undefined;
+  if (!numGroups) {
+    if (numPlayers <= 8) {
+      numGroups = 2;
+    } else if (numPlayers <= 16) {
+      numGroups = 4;
+    } else {
+      numGroups = Math.min(8, Math.ceil(numPlayers / 4));
+    }
   }
 
   // Distribute players into groups
@@ -147,13 +261,13 @@ export function generateMixedMatches(players) {
   // Generate round-robin matches for each group
   let matchNumber = 1;
   groups.forEach((groupPlayers, groupIndex) => {
-    const groupMatches = generateRoundRobinMatches(groupPlayers);
-    
+    const groupMatches = scheduleType === 'berger'
+      ? generateRoundRobinMatchesBerger(groupPlayers)
+      : generateRoundRobinMatches(groupPlayers);
     groupMatches.forEach(match => {
       matches.push({
         ...match,
         match_number: matchNumber++,
-        // Prefix round with group identifier (e.g., group 1 round 1 = 101, group 2 round 1 = 201)
         round: (groupIndex + 1) * 100 + match.round
       });
     });

@@ -6,9 +6,10 @@ import {
   updateTournament,
   deleteTournament
 } from '../controllers/tournamentController.js';
-import { getPlayers, addPlayer } from '../controllers/playerController.js';
+import { getPlayers, addPlayer, updatePlayerOrder } from '../controllers/playerController.js';
 import { startTournament, getMatches } from '../controllers/matchController.js';
 import { generatePlayoffs, generateNextRound, resetPlayoffs } from '../controllers/playoffController.js';
+import { resetGroups } from '../controllers/groupsController.js';
 import { getStandings } from '../controllers/standingsController.js';
 
 const router = express.Router();
@@ -24,6 +25,7 @@ router.delete('/:id', deleteTournament);
 router.post('/:id/start', startTournament);
 router.get('/:id/players', getPlayers);
 router.post('/:id/players', addPlayer);
+router.put('/:id/players/order', updatePlayerOrder);
 router.get('/:id/matches', getMatches);
 router.get('/:id/standings', getStandings);
 
@@ -31,5 +33,8 @@ router.get('/:id/standings', getStandings);
 router.post('/:id/playoffs', generatePlayoffs);
 router.post('/:id/playoffs/next-round', generateNextRound);
 router.delete('/:id/playoffs', resetPlayoffs);
+
+// Group operations
+router.delete('/:id/groups', resetGroups);
 
 export default router;

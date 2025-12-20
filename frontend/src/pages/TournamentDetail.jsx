@@ -250,9 +250,50 @@ function TournamentDetail() {
     }
   };
 
+  const updatePlayersOrder = async (orderIds) => {
+    try {
+      const resp = await fetch(`http://localhost:3000/api/tournaments/${id}/players/order`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: orderIds })
+      });
+      if (resp.ok) {
+        await fetchPlayers();
+        setNotification({ message: 'Pořadí hráčů bylo upraveno', type: 'success' });
+        setTimeout(() => setNotification({ message: '', type: '' }), 2000);
+      } else {
+        const err = await resp.json();
+        setNotification({ message: err.error || 'Chyba při změně pořadí', type: 'error' });
+      }
+    } catch (e) {
+      console.error(e);
+      setNotification({ message: 'Chyba při spojení se serverem', type: 'error' });
+    }
+  };
+
+  const movePlayerUp = async (playerId) => {
+    const idx = players.findIndex(p => p.id === playerId);
+    if (idx <= 0) return;
+    const newList = [...players];
+    [newList[idx - 1], newList[idx]] = [newList[idx], newList[idx - 1]];
+    setPlayers(newList);
+    await updatePlayersOrder(newList.map(p => p.id));
+  };
+
+  const movePlayerDown = async (playerId) => {
+    const idx = players.findIndex(p => p.id === playerId);
+    if (idx === -1 || idx >= players.length - 1) return;
+    const newList = [...players];
+    [newList[idx], newList[idx + 1]] = [newList[idx + 1], newList[idx]];
+    setPlayers(newList);
+    await updatePlayersOrder(newList.map(p => p.id));
+  };
+
   const getMatchesByRound = (matches) => {
-    // For mixed tournaments, group all group-stage matches by round number across all groups
-    if (tournament?.typ === 'smiseny') {
+    // For tournaments with encoded group rounds (round >=100),
+    // group group-stage matches by round number across all groups
+    const hasEncodedGroups = matches.some(m => m.round < 900 && m.round >= 100);
+    if (hasEncodedGroups) {
       const groupsByRound = new Map();
       const playoffs = [];
 
@@ -290,15 +331,14 @@ function TournamentDetail() {
   };
 
   const getRoundLabel = (round, typ) => {
-    if (typ === 'smiseny') {
-      if (round >= 900) return 'Play-off';
-      // In our UI we group group-stage across groups by round number
-      if (round < 100) return `Kolo ${round}`;
+    if (round >= 900) return 'Play-off';
+    // If encoded group round provided
+    if (round >= 100) {
       const groupNum = Math.floor(round / 100);
       const roundNum = round % 100;
       return `Skupina ${groupNum}, Kolo ${roundNum}`;
     }
-    // pavouk & skupina
+    // Default
     return `Kolo ${round}`;
   };
 
@@ -350,9 +390,9 @@ function TournamentDetail() {
           </tr>
         </thead>
         <tbody>
-          {rows.map(r => (
+          {rows.map((r, idx) => (
             <tr key={r.player_id}>
-              <td>{r.poradi}</td>
+              <td>{idx + 1}</td>
               <td>{r.jmeno}</td>
               <td>{r.played}</td>
               <td>{r.wins}</td>
@@ -420,7 +460,7 @@ function TournamentDetail() {
 
       <div className="tabs">
         <button className={`tab ${activeTab==='prehled'?'active':''}`} onClick={()=>setActiveTab('prehled')}>Přehled</button>
-        <button className={`tab ${activeTab==='hraci'?'active':''}`} onClick={()=>setActiveTab('hraci')}>Hráči</button>
+        <button className={`tab ${activeTab==='hraci'?'active':''}`} onClick={()=>{ setActiveTab('hraci'); fetchTournament(); fetchPlayers(); }}>Hráči</button>
         <button className={`tab ${activeTab==='zapasy'?'active':''}`} onClick={()=>{ setActiveTab('zapasy'); fetchMatches(); }}>Zápasy (skupiny)</button>
         {tournament.typ === 'smiseny' && (
           <button className={`tab ${activeTab==='playoff'?'active':''}`} onClick={()=>{ setActiveTab('playoff'); fetchMatches(); }}>Play-off</button>
@@ -488,6 +528,16 @@ function TournamentDetail() {
                 <div className="info-value">{tournament.pocetStolu || 1}</div>
               </div>
             </div>
+            {/* Rozpis zápasů byl odstraněn z přehledu – používá se Berger */}
+            {(tournament.pocetSkupin && tournament.pocetSkupin > 1) && (
+              <div className="info-item">
+                <div className="info-icon">📦</div>
+                <div className="info-details">
+                  <div className="info-label">Počet skupin</div>
+                  <div className="info-value">{tournament.pocetSkupin}</div>
+                </div>
+              </div>
+            )}
             </div>
           </div>
 
@@ -571,16 +621,28 @@ function TournamentDetail() {
               <div className="players-list">
                 {players.map((player, index) => (
                   <div key={player.id} className="player-item">
-                    <span className="player-number">{index + 1}</span>
+                    <span className="player-number">{player.poradi ?? (index + 1)}</span>
                     <span className="player-name">{player.jmeno}</span>
                     {tournament.status === 'nadchazejici' && (
-                      <button
-                        className="btn-remove-player"
-                        onClick={() => handleDeletePlayer(player.id)}
-                        title="Odstranit hráče"
-                      >
-                        ✕
-                      </button>
+                      <div className="player-actions">
+                        <button
+                          className="btn-secondary"
+                          onClick={() => movePlayerUp(player.id)}
+                          title="Posunout nahoru"
+                        >↑</button>
+                        <button
+                          className="btn-secondary"
+                          onClick={() => movePlayerDown(player.id)}
+                          title="Posunout dolů"
+                        >↓</button>
+                        <button
+                          className="btn-remove-player"
+                          onClick={() => handleDeletePlayer(player.id)}
+                          title="Odstranit hráče"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -637,6 +699,16 @@ function TournamentDetail() {
             {standings && standings.type === 'skupina' && standings.standings && standings.standings.length > 0 && (
               <div className="standings">
                 {renderStandingsTable(standings.standings)}
+              </div>
+            )}
+            {standings && standings.type === 'skupina' && standings.groups && standings.groups.length > 0 && (
+              <div className="standings">
+                {standings.groups.map(g => (
+                  <div key={g.group} style={{marginBottom: '1rem'}}>
+                    <h3 className="round-title">Skupina {g.group}</h3>
+                    {renderStandingsTable(g.standings)}
+                  </div>
+                ))}
               </div>
             )}
             {standings && standings.type === 'smiseny' && standings.groups && standings.groups.length > 0 && (

@@ -44,6 +44,7 @@ const initDB = async () => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       tournament_id INTEGER NOT NULL,
       jmeno TEXT NOT NULL,
+      poradi INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
     )
@@ -81,8 +82,25 @@ const initDB = async () => {
     db.run('ALTER TABLE tournaments ADD COLUMN pocetStolu INTEGER NOT NULL DEFAULT 1');
   }
 
+  // Add optional number of groups for round-robin or mixed tournaments
+  if (!hasColumn('tournaments', 'pocetSkupin')) {
+    db.run('ALTER TABLE tournaments ADD COLUMN pocetSkupin INTEGER DEFAULT 1');
+  }
+
+  // Add schedule type (round-robin pattern): 'standard' | 'berger'
+  if (!hasColumn('tournaments', 'rozpis')) {
+    db.run("ALTER TABLE tournaments ADD COLUMN rozpis TEXT DEFAULT 'standard'");
+  }
+
   if (!hasColumn('matches', 'table_number')) {
     db.run('ALTER TABLE matches ADD COLUMN table_number INTEGER');
+  }
+
+  // Add player ordering column if missing and initialize
+  if (!hasColumn('players', 'poradi')) {
+    db.run('ALTER TABLE players ADD COLUMN poradi INTEGER');
+    // Initialize ordering to current id per tournament
+    db.run('UPDATE players SET poradi = id WHERE poradi IS NULL');
   }
 
   saveDB();

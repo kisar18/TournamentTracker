@@ -1,6 +1,6 @@
 import { getDB, saveDB } from '../database.js';
 import { rowsToObjects, rowToObject, getSingleValue } from '../utils/dbHelpers.js';
-import { generateRoundRobinMatches, generateEliminationMatches, generateMixedMatches } from '../matchGenerator.js';
+import { generateRoundRobinMatches, generateEliminationMatches, generateMixedMatches, generateGroupedRoundRobinMatches, generateRoundRobinMatchesBerger } from '../matchGenerator.js';
 
 export const startTournament = (req, res) => {
   try {
@@ -19,8 +19,8 @@ export const startTournament = (req, res) => {
       return res.status(400).json({ error: 'Turnaj již byl zahájen' });
     }
 
-    // Get players
-    const playersResult = db.exec('SELECT * FROM players WHERE tournament_id = ? ORDER BY jmeno', [tournamentId]);
+    // Get players in seeded order (poradi) for alternating group assignment
+    const playersResult = db.exec('SELECT * FROM players WHERE tournament_id = ? ORDER BY poradi ASC, jmeno ASC', [tournamentId]);
     const players = rowsToObjects(playersResult);
 
     if (players.length < 2) {
@@ -31,13 +31,21 @@ export const startTournament = (req, res) => {
     let matches = [];
     switch (tournament.typ) {
       case 'skupina':
-        matches = generateRoundRobinMatches(players);
+        if (tournament.pocetSkupin && tournament.pocetSkupin > 1) {
+          matches = generateGroupedRoundRobinMatches(players, tournament.pocetSkupin, 'berger');
+        } else {
+          matches = generateRoundRobinMatchesBerger(players);
+        }
         break;
       case 'pavouk':
         matches = generateEliminationMatches(players);
         break;
       case 'smiseny':
-        matches = generateMixedMatches(players);
+        matches = generateMixedMatches(
+          players,
+          tournament.pocetSkupin && tournament.pocetSkupin > 0 ? tournament.pocetSkupin : undefined,
+          'berger'
+        );
         break;
       default:
         return res.status(400).json({ error: 'Neznámý typ turnaje' });

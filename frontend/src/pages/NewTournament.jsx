@@ -10,7 +10,8 @@ function NewTournament() {
     datum: '',
     misto: '',
     popis: '',
-    pocetStolu: '1'
+    pocetStolu: '1',
+    pocetSkupin: '1',
   });
   const [notification, setNotification] = useState({ message: '', type: '' }); // 'success', 'error', 'warning'
 
@@ -94,6 +95,20 @@ function NewTournament() {
         type: 'error'
       });
       return;
+    }
+
+    // Validate number of groups for relevant types
+    if (formData.typ === 'skupina' || formData.typ === 'smiseny') {
+      const mp = parseInt(formData.maxPocetHracu);
+      const gs = parseInt(formData.pocetSkupin);
+      if (Number.isNaN(gs) || gs < 1) {
+        setNotification({ message: 'Počet skupin musí být alespoň 1', type: 'error' });
+        return;
+      }
+      if (!Number.isNaN(mp) && gs > mp) {
+        setNotification({ message: 'Počet skupin nesmí být větší než počet hráčů', type: 'error' });
+        return;
+      }
     }
     
     try {
@@ -274,6 +289,8 @@ function NewTournament() {
                 </label>
               </div>
             </div>
+
+            {/* Rozpis zápasů byl odstraněn – vždy se používají Bergerovy tabulky */}
           </div>
         )}
 
@@ -296,6 +313,24 @@ function NewTournament() {
               />
               <small>Minimálně 2 hráči</small>
             </div>
+
+            {(formData.typ === 'skupina' || formData.typ === 'smiseny') && (
+              <div className="form-group">
+                <label htmlFor="pocetSkupin">Počet skupin *</label>
+                <input
+                  type="number"
+                  id="pocetSkupin"
+                  name="pocetSkupin"
+                  value={formData.pocetSkupin}
+                  onChange={handleChange}
+                  placeholder="např. 2"
+                  min="1"
+                />
+                <small>
+                  Zadejte kolik skupin chcete (např. 2 skupiny pro 10 hráčů, nebo 4 skupiny po 4 hráčích pro 16 hráčů).
+                </small>
+              </div>
+            )}
           </div>
         )}
 

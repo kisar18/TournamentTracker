@@ -39,7 +39,9 @@ export const createTournament = (req, res) => {
       datum: date,
       misto: location,
       popis: description,
-      pocetStolu: tableCount
+      pocetStolu: tableCount,
+      pocetSkupin: groupsCount,
+      rozpis: schedule
     } = req.body;
 
     if (!name || !type || !maxPlayers || !date || !location) {
@@ -52,9 +54,24 @@ export const createTournament = (req, res) => {
     }
 
     const db = getDB();
+  // Validate schedule type
+  const allowedSchedules = ['standard', 'berger'];
+  const scheduleType = allowedSchedules.includes(schedule) ? schedule : 'standard';
+
+    // Validate number of groups if provided (for 'skupina' or 'smiseny')
+    let numGroups = groupsCount ? parseInt(groupsCount) : 1;
+    if (Number.isNaN(numGroups) || numGroups < 1) {
+      numGroups = 1;
+    }
+    if ((type === 'skupina' || type === 'smiseny') && maxPlayers) {
+      const mp = parseInt(maxPlayers);
+      if (!Number.isNaN(mp) && numGroups > mp) {
+        return res.status(400).json({ error: 'Počet skupin nesmí být větší než počet hráčů' });
+      }
+    }
     db.run(
-      'INSERT INTO tournaments (nazev, typ, maxPocetHracu, datum, misto, popis, pocetStolu) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [name, type, parseInt(maxPlayers), date, location, description || '', tables]
+      'INSERT INTO tournaments (nazev, typ, maxPocetHracu, datum, misto, popis, pocetStolu, pocetSkupin, rozpis) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [name, type, parseInt(maxPlayers), date, location, description || '', tables, numGroups, scheduleType]
     );
     saveDB();
 
@@ -78,19 +95,44 @@ export const updateTournament = (req, res) => {
       misto: location,
       popis: description,
       status,
-      pocetStolu: tableCount
+      pocetStolu: tableCount,
+      pocetSkupin: groupsCount,
+      rozpis: schedule
     } = req.body;
+      // Validate schedule if provided
+      const allowedSchedulesU = ['standard', 'berger'];
+      const scheduleTypeU = allowedSchedulesU.includes(schedule) ? schedule : undefined;
     const db = getDB();
+    // Validate number of groups if provided
+    let numGroups = groupsCount ? parseInt(groupsCount) : undefined;
+    if (numGroups !== undefined) {
+      if (Number.isNaN(numGroups) || numGroups < 1) {
+        return res.status(400).json({ error: 'Počet skupin musí být alespoň 1' });
+      }
+      const mp = parseInt(maxPlayers);
+      if (!Number.isNaN(mp) && numGroups > mp) {
+        return res.status(400).json({ error: 'Počet skupin nesmí být větší než počet hráčů' });
+      }
+    }
 
     const tables = tableCount ? parseInt(tableCount) : 1;
     if (Number.isNaN(tables) || tables < 1) {
       return res.status(400).json({ error: 'Počet stolů musí být alespoň 1' });
     }
 
-    db.run(
-      'UPDATE tournaments SET nazev = ?, typ = ?, maxPocetHracu = ?, datum = ?, misto = ?, popis = ?, status = ?, pocetStolu = ? WHERE id = ?',
-      [name, type, parseInt(maxPlayers), date, location, description || '', status || 'nadchazejici', tables, parseInt(req.params.id)]
-    );
+    const updates = ['nazev = ?', 'typ = ?', 'maxPocetHracu = ?', 'datum = ?', 'misto = ?', 'popis = ?', 'status = ?', 'pocetStolu = ?'];
+    const params = [name, type, parseInt(maxPlayers), date, location, description || '', status || 'nadchazejici', tables];
+    if (numGroups !== undefined) {
+      updates.push('pocetSkupin = ?');
+      params.push(numGroups);
+    }
+    if (scheduleTypeU !== undefined) {
+      updates.push('rozpis = ?');
+      params.push(scheduleTypeU);
+    }
+    updates.push('id = ?');
+    params.push(parseInt(req.params.id));
+    db.run(`UPDATE tournaments SET ${updates.join(', ')} WHERE id = ?`, params);
     saveDB();
 
     const result = db.exec('SELECT * FROM tournaments WHERE id = ?', [parseInt(req.params.id)]);

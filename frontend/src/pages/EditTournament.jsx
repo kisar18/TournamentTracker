@@ -13,7 +13,8 @@ function EditTournament() {
     misto: '',
     popis: '',
     pocetStolu: '1',
-    status: 'nadchazejici'
+    status: 'nadchazejici',
+    pocetSkupin: '1',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -33,7 +34,8 @@ function EditTournament() {
           misto: data.misto || '',
           popis: data.popis || '',
           pocetStolu: (data.pocetStolu || 1).toString(),
-          status: data.status || 'nadchazejici'
+          status: data.status || 'nadchazejici',
+          pocetSkupin: (data.pocetSkupin || 1).toString(),
         });
       } catch (e) {
         setNotification({ message: 'Nepodařilo se načíst turnaj', type: 'error' });
@@ -71,6 +73,18 @@ function EditTournament() {
       setNotification({ message: 'Počet stolů musí být alespoň 1', type: 'error' });
       return false;
     }
+    if (formData.typ === 'skupina' || formData.typ === 'smiseny') {
+      const mp = parseInt(formData.maxPocetHracu, 10);
+      const gs = parseInt(formData.pocetSkupin, 10);
+      if (Number.isNaN(gs) || gs < 1) {
+        setNotification({ message: 'Počet skupin musí být alespoň 1', type: 'error' });
+        return false;
+      }
+      if (!Number.isNaN(mp) && gs > mp) {
+        setNotification({ message: 'Počet skupin nesmí být větší než počet hráčů', type: 'error' });
+        return false;
+      }
+    }
     return true;
   };
 
@@ -86,7 +100,8 @@ function EditTournament() {
         body: JSON.stringify({
           ...formData,
           maxPocetHracu: parseInt(formData.maxPocetHracu, 10),
-          pocetStolu: parseInt(formData.pocetStolu, 10)
+          pocetStolu: parseInt(formData.pocetStolu, 10),
+          pocetSkupin: parseInt(formData.pocetSkupin, 10),
         })
       });
       if (!resp.ok) {
@@ -153,6 +168,8 @@ function EditTournament() {
             {isLocked && <small>Typ nelze změnit po zahájení.</small>}
           </div>
 
+          {/* Rozpis zápasů byl odstraněn – vždy se používají Bergerovy tabulky */}
+
           <div className="form-group">
             <label htmlFor="maxPocetHracu">Maximální počet hráčů *</label>
             <input
@@ -165,6 +182,24 @@ function EditTournament() {
               disabled={saving || isLocked}
             />
           </div>
+
+          {(formData.typ === 'skupina' || formData.typ === 'smiseny') && (
+            <div className="form-group">
+              <label htmlFor="pocetSkupin">Počet skupin *</label>
+              <input
+                type="number"
+                id="pocetSkupin"
+                name="pocetSkupin"
+                value={formData.pocetSkupin}
+                onChange={handleChange}
+                min="1"
+                disabled={saving || isLocked}
+              />
+              {isLocked && (
+                <small>Počet skupin lze měnit až po resetu skupin níže.</small>
+              )}
+            </div>
+          )}
 
           <div className="form-group">
             <label htmlFor="datum">Datum konání *</label>
@@ -210,6 +245,32 @@ function EditTournament() {
           <button type="button" className="btn-secondary" onClick={() => navigate(`/turnaje/${id}`)} disabled={saving}>← Zpět</button>
           <button type="submit" className="btn-primary" disabled={saving}>Uložit změny</button>
         </div>
+
+        {(formData.typ === 'skupina' || formData.typ === 'smiseny') && formData.status !== 'nadchazejici' && (
+          <div className="form-actions" style={{ marginTop: '12px' }}>
+            <button
+              type="button"
+              className="btn-delete"
+              onClick={async () => {
+                if (!window.confirm('Opravdu chcete resetovat skupiny? Všechny skupinové zápasy budou smazány a turnaj se vrátí do stavu nadcházející.')) return;
+                try {
+                  const resp = await fetch(`http://localhost:3000/api/tournaments/${id}/groups`, { method: 'DELETE' });
+                  const data = await resp.json();
+                  if (resp.ok) {
+                    setNotification({ message: data.message || 'Skupiny byly resetovány', type: 'success' });
+                    setFormData(prev => ({ ...prev, status: 'nadchazejici' }));
+                  } else {
+                    setNotification({ message: data.error || 'Chyba při resetování skupin', type: 'error' });
+                  }
+                } catch (e) {
+                  setNotification({ message: 'Chyba při spojení se serverem', type: 'error' });
+                }
+              }}
+            >
+              Resetovat skupiny
+            </button>
+          </div>
+        )}
       </form>
     </div>
   );

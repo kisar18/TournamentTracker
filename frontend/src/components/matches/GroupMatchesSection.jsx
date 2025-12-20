@@ -21,7 +21,7 @@ function GroupMatchesSection({
       <div className="match-meta">
         <div className="match-meta-left">
           <div className="match-number">Zápas {match.match_number}</div>
-          {tournament.typ === 'smiseny' && match.round < 900 && (
+          {match.round < 900 && Math.floor(match.round / 100) > 0 && (
             <span className="match-group-badge">Skupina {Math.floor(match.round / 100)}</span>
           )}
         </div>
