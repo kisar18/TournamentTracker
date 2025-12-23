@@ -28,7 +28,7 @@ const initDB = async () => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nazev TEXT NOT NULL,
       typ TEXT NOT NULL,
-      maxPocetHracu INTEGER NOT NULL,
+      maxPocetHracu INTEGER NOT NULL DEFAULT 999,
       datum TEXT NOT NULL,
       misto TEXT NOT NULL,
       popis TEXT,

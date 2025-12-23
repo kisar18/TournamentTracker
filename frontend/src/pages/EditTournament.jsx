@@ -8,13 +8,11 @@ function EditTournament() {
   const [formData, setFormData] = useState({
     nazev: '',
     typ: 'pavouk',
-    maxPocetHracu: '',
     datum: '',
     misto: '',
     popis: '',
     pocetStolu: '1',
     status: 'nadchazejici',
-    pocetSkupin: '1',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -29,13 +27,11 @@ function EditTournament() {
         setFormData({
           nazev: data.nazev || '',
           typ: data.typ || 'pavouk',
-          maxPocetHracu: data.maxPocetHracu?.toString() || '',
           datum: data.datum || '',
           misto: data.misto || '',
           popis: data.popis || '',
           pocetStolu: (data.pocetStolu || 1).toString(),
           status: data.status || 'nadchazejici',
-          pocetSkupin: (data.pocetSkupin || 1).toString(),
         });
       } catch (e) {
         setNotification({ message: 'Nepodařilo se načíst turnaj', type: 'error' });
@@ -60,7 +56,6 @@ function EditTournament() {
     const missing = [];
     if (!formData.nazev.trim()) missing.push('Název');
     if (!formData.typ) missing.push('Typ');
-    if (!formData.maxPocetHracu) missing.push('Počet hráčů');
     if (!formData.datum) missing.push('Datum');
     if (!formData.misto.trim()) missing.push('Místo');
     if (!formData.pocetStolu) missing.push('Počet stolů');
@@ -74,16 +69,7 @@ function EditTournament() {
       return false;
     }
     if (formData.typ === 'skupina' || formData.typ === 'smiseny') {
-      const mp = parseInt(formData.maxPocetHracu, 10);
-      const gs = parseInt(formData.pocetSkupin, 10);
-      if (Number.isNaN(gs) || gs < 1) {
-        setNotification({ message: 'Počet skupin musí být alespoň 1', type: 'error' });
-        return false;
-      }
-      if (!Number.isNaN(mp) && gs > mp) {
-        setNotification({ message: 'Počet skupin nesmí být větší než počet hráčů', type: 'error' });
-        return false;
-      }
+      // počet skupin se nyní volí při zahájení turnaje, ne v editaci
     }
     return true;
   };
@@ -98,10 +84,13 @@ function EditTournament() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
-          maxPocetHracu: parseInt(formData.maxPocetHracu, 10),
-          pocetStolu: parseInt(formData.pocetStolu, 10),
-          pocetSkupin: parseInt(formData.pocetSkupin, 10),
+          nazev: formData.nazev,
+          typ: formData.typ,
+          datum: formData.datum,
+          misto: formData.misto,
+          popis: formData.popis,
+          status: formData.status,
+          pocetStolu: parseInt(formData.pocetStolu, 10)
         })
       });
       if (!resp.ok) {
@@ -170,36 +159,7 @@ function EditTournament() {
 
           {/* Rozpis zápasů byl odstraněn – vždy se používají Bergerovy tabulky */}
 
-          <div className="form-group">
-            <label htmlFor="maxPocetHracu">Maximální počet hráčů *</label>
-            <input
-              type="number"
-              id="maxPocetHracu"
-              name="maxPocetHracu"
-              value={formData.maxPocetHracu}
-              onChange={handleChange}
-              min="2"
-              disabled={saving || isLocked}
-            />
-          </div>
-
-          {(formData.typ === 'skupina' || formData.typ === 'smiseny') && (
-            <div className="form-group">
-              <label htmlFor="pocetSkupin">Počet skupin *</label>
-              <input
-                type="number"
-                id="pocetSkupin"
-                name="pocetSkupin"
-                value={formData.pocetSkupin}
-                onChange={handleChange}
-                min="1"
-                disabled={saving || isLocked}
-              />
-              {isLocked && (
-                <small>Počet skupin lze měnit až po resetu skupin níže.</small>
-              )}
-            </div>
-          )}
+          {/* Počet skupin byl odebrán z editace – volí se při zahájení turnaje */}
 
           <div className="form-group">
             <label htmlFor="datum">Datum konání *</label>

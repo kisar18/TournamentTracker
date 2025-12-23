@@ -35,7 +35,6 @@ export const createTournament = (req, res) => {
     const {
       nazev: name,
       typ: type,
-      maxPocetHracu: maxPlayers,
       datum: date,
       misto: location,
       popis: description,
@@ -44,7 +43,7 @@ export const createTournament = (req, res) => {
       rozpis: schedule
     } = req.body;
 
-    if (!name || !type || !maxPlayers || !date || !location) {
+    if (!name || !type || !date || !location) {
       return res.status(400).json({ error: 'Chybí povinná pole' });
     }
 
@@ -63,15 +62,9 @@ export const createTournament = (req, res) => {
     if (Number.isNaN(numGroups) || numGroups < 1) {
       numGroups = 1;
     }
-    if ((type === 'skupina' || type === 'smiseny') && maxPlayers) {
-      const mp = parseInt(maxPlayers);
-      if (!Number.isNaN(mp) && numGroups > mp) {
-        return res.status(400).json({ error: 'Počet skupin nesmí být větší než počet hráčů' });
-      }
-    }
     db.run(
       'INSERT INTO tournaments (nazev, typ, maxPocetHracu, datum, misto, popis, pocetStolu, pocetSkupin, rozpis) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [name, type, parseInt(maxPlayers), date, location, description || '', tables, numGroups, scheduleType]
+      [name, type, 999, date, location, description || '', tables, numGroups, scheduleType]
     );
     saveDB();
 
@@ -90,7 +83,6 @@ export const updateTournament = (req, res) => {
     const {
       nazev: name,
       typ: type,
-      maxPocetHracu: maxPlayers,
       datum: date,
       misto: location,
       popis: description,
@@ -109,10 +101,6 @@ export const updateTournament = (req, res) => {
       if (Number.isNaN(numGroups) || numGroups < 1) {
         return res.status(400).json({ error: 'Počet skupin musí být alespoň 1' });
       }
-      const mp = parseInt(maxPlayers);
-      if (!Number.isNaN(mp) && numGroups > mp) {
-        return res.status(400).json({ error: 'Počet skupin nesmí být větší než počet hráčů' });
-      }
     }
 
     const tables = tableCount ? parseInt(tableCount) : 1;
@@ -120,8 +108,8 @@ export const updateTournament = (req, res) => {
       return res.status(400).json({ error: 'Počet stolů musí být alespoň 1' });
     }
 
-    const updates = ['nazev = ?', 'typ = ?', 'maxPocetHracu = ?', 'datum = ?', 'misto = ?', 'popis = ?', 'status = ?', 'pocetStolu = ?'];
-    const params = [name, type, parseInt(maxPlayers), date, location, description || '', status || 'nadchazejici', tables];
+    const updates = ['nazev = ?', 'typ = ?', 'datum = ?', 'misto = ?', 'popis = ?', 'status = ?', 'pocetStolu = ?'];
+    const params = [name, type, date, location, description || '', status || 'nadchazejici', tables];
     if (numGroups !== undefined) {
       updates.push('pocetSkupin = ?');
       params.push(numGroups);

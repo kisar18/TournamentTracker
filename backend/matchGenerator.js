@@ -164,17 +164,40 @@ export function generateRoundRobinMatchesBerger(players) {
 /**
  * Generate round-robin matches across multiple groups
  * Rounds are encoded as (groupIndex+1)*100 + roundInGroup to distinguish groups in UI/standings.
+ * Ensures even player count per group (for Berger tables).
  * @param {Array} players - Array of player objects with id and jmeno
  * @param {number} numGroups - Desired number of groups (>=1)
  * @returns {Array} Array of matches with encoded round and global match_number
  */
 export function generateGroupedRoundRobinMatches(players, numGroups, scheduleType = 'standard') {
   const matches = [];
+  const totalPlayers = players.length;
   const groups = Array.from({ length: Math.max(1, numGroups || 1) }, () => []);
 
-  // Distribute players into groups as evenly as possible
-  players.forEach((player, index) => {
-    groups[index % groups.length].push(player);
+  // Calculate even distribution: ensure each group has even number of players
+  // If total is odd, we'll add a virtual BYE player
+  const needsBye = totalPlayers % 2 === 1;
+  const effectivePlayers = needsBye ? totalPlayers + 1 : totalPlayers;
+  const basePerGroup = Math.floor(effectivePlayers / groups.length);
+  const remainder = effectivePlayers % groups.length;
+
+  // Distribute players ensuring even counts
+  let playerIndex = 0;
+  groups.forEach((group, groupIndex) => {
+    // Groups with index < remainder get basePerGroup + 1 players
+    const groupSize = groupIndex < remainder ? basePerGroup + 1 : basePerGroup;
+    
+    // Ensure group size is even
+    const evenGroupSize = groupSize % 2 === 0 ? groupSize : groupSize + 1;
+    
+    for (let i = 0; i < evenGroupSize; i++) {
+      if (playerIndex < totalPlayers) {
+        group.push(players[playerIndex++]);
+      } else {
+        // Add BYE player if needed
+        group.push({ id: null, jmeno: 'BYE' });
+      }
+    }
   });
 
   let globalMatchNumber = 1;

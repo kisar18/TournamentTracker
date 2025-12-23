@@ -6,16 +6,14 @@ function NewTournament() {
   const [formData, setFormData] = useState({
     nazev: '',
     typ: 'pavouk',
-    maxPocetHracu: '',
     datum: '',
     misto: '',
     popis: '',
-    pocetStolu: '1',
-    pocetSkupin: '1',
+    pocetStolu: '1'
   });
   const [notification, setNotification] = useState({ message: '', type: '' }); // 'success', 'error', 'warning'
 
-  const totalSteps = 4;
+  const totalSteps = 3;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -75,7 +73,6 @@ function NewTournament() {
     const missingFields = [];
     if (!formData.nazev || formData.nazev.trim() === '') missingFields.push('Název turnaje');
     if (!formData.typ) missingFields.push('Typ turnaje');
-    if (!formData.maxPocetHracu) missingFields.push('Počet hráčů');
     if (!formData.datum) missingFields.push('Datum konání');
     if (!formData.misto || formData.misto.trim() === '') missingFields.push('Místo konání');
     if (!formData.pocetStolu) missingFields.push('Počet stolů');
@@ -97,20 +94,6 @@ function NewTournament() {
       return;
     }
 
-    // Validate number of groups for relevant types
-    if (formData.typ === 'skupina' || formData.typ === 'smiseny') {
-      const mp = parseInt(formData.maxPocetHracu);
-      const gs = parseInt(formData.pocetSkupin);
-      if (Number.isNaN(gs) || gs < 1) {
-        setNotification({ message: 'Počet skupin musí být alespoň 1', type: 'error' });
-        return;
-      }
-      if (!Number.isNaN(mp) && gs > mp) {
-        setNotification({ message: 'Počet skupin nesmí být větší než počet hráčů', type: 'error' });
-        return;
-      }
-    }
-    
     try {
       const response = await fetch('http://localhost:3000/api/tournaments', {
         method: 'POST',
@@ -153,8 +136,6 @@ function NewTournament() {
       case 2:
         return formData.typ !== '';
       case 3:
-        return formData.maxPocetHracu !== '' && parseInt(formData.maxPocetHracu) >= 2;
-      case 4:
         // Step 4 doesn't need validation for "Next" since it's the last step
         // Validation will happen on form submit
         return true;
@@ -201,14 +182,6 @@ function NewTournament() {
             style={{ cursor: currentStep >= 3 ? 'pointer' : 'default' }}
           >
             <div className="step-number">3</div>
-            <div className="step-label">Hráči</div>
-          </div>
-          <div 
-            className={`step ${currentStep >= 4 ? 'active' : ''} ${currentStep > 4 ? 'completed' : ''}`}
-            onClick={() => goToStep(4)}
-            style={{ cursor: currentStep >= 4 ? 'pointer' : 'default' }}
-          >
-            <div className="step-number">4</div>
             <div className="step-label">Detaily</div>
           </div>
         </div>
@@ -294,48 +267,8 @@ function NewTournament() {
           </div>
         )}
 
-        {/* Step 3: Number of Players */}
+        {/* Step 3: Additional Details */}
         {currentStep === 3 && (
-          <div className="step-content">
-            <h2>Počet hráčů</h2>
-            <p className="step-description">Kolik hráčů se zúčastní turnaje?</p>
-            <div className="form-group">
-              <label htmlFor="maxPocetHracu">Maximální počet hráčů *</label>
-              <input
-                type="number"
-                id="maxPocetHracu"
-                name="maxPocetHracu"
-                value={formData.maxPocetHracu}
-                onChange={handleChange}
-                placeholder="např. 16"
-                min="2"
-                autoFocus
-              />
-              <small>Minimálně 2 hráči</small>
-            </div>
-
-            {(formData.typ === 'skupina' || formData.typ === 'smiseny') && (
-              <div className="form-group">
-                <label htmlFor="pocetSkupin">Počet skupin *</label>
-                <input
-                  type="number"
-                  id="pocetSkupin"
-                  name="pocetSkupin"
-                  value={formData.pocetSkupin}
-                  onChange={handleChange}
-                  placeholder="např. 2"
-                  min="1"
-                />
-                <small>
-                  Zadejte kolik skupin chcete (např. 2 skupiny pro 10 hráčů, nebo 4 skupiny po 4 hráčích pro 16 hráčů).
-                </small>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Step 4: Additional Details */}
-        {currentStep === 4 && (
           <div className="step-content">
             <h2>Další informace</h2>
             <p className="step-description">Doplňte detaily o turnaji</p>

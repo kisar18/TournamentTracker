@@ -79,40 +79,44 @@ function TournamentDetail() {
     }
   };
 
-  const handleStartTournament = async () => {
+  const handleStartTournament = async (groupCount = 1) => {
     if (players.length < 2) {
       setNotification({ message: 'Turnaj musí mít alespoň 2 hráče', type: 'error' });
       return;
     }
 
-    if (!window.confirm('Opravdu chcete zahájit turnaj? Po zahájení nelze přidávat nebo odebírat hráče.')) {
-      return;
-    }
+    // Start directly with provided count (pavouk always 1)
+    const countToUse = tournament.typ === 'pavouk' ? 1 : (parseInt(groupCount, 10) || 1);
+    await startTournamentWithGroups(countToUse);
+  };
 
+  const startTournamentWithGroups = async (groupCount) => {
+    let response;
     try {
-      const response = await fetch(`http://localhost:3000/api/tournaments/${id}/start`, {
-        method: 'POST'
+      response = await fetch(`http://localhost:3000/api/tournaments/${id}/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pocetSkupin: groupCount })
       });
-
-      if (response.ok) {
-        const data = await response.json();
-        setNotification({ message: `Turnaj byl zahájen! Vygenerováno ${data.matchesGenerated} zápasů.`, type: 'success' });
-        
-        // Refresh tournament and matches
-        await fetchTournament();
-        await fetchMatches();
-        await fetchStandings();
-        
-        setTimeout(() => setNotification({ message: '', type: '' }), 5000);
-      } else {
-        const error = await response.json();
-        setNotification({ message: error.error || 'Chyba při zahájení turnaje', type: 'error' });
-      }
     } catch (error) {
       console.error('Error starting tournament:', error);
       setNotification({ message: 'Chyba při spojení se serverem', type: 'error' });
+      return;
+    }
+
+    if (response.ok) {
+      const data = await response.json();
+      setNotification({ message: `Turnaj byl zahájen! Vygenerováno ${data.matchesGenerated} zápasů.`, type: 'success' });
+      // Refresh data silently; transient errors won't flip notification to error
+      Promise.allSettled([fetchTournament(), fetchMatches(), fetchStandings()]);
+      setTimeout(() => setNotification({ message: '', type: '' }), 5000);
+    } else {
+      const errorData = await response.json();
+      setNotification({ message: errorData.error || 'Chyba při zahájení turnaje', type: 'error' });
     }
   };
+
+  // Počet skupin se volí v záložce Zápasy (skupiny)
 
   const saveMatchResult = async (matchId, scoreStr) => {
     const [a,b] = scoreStr.split(':').map(n=>parseInt(n,10));
@@ -458,6 +462,8 @@ function TournamentDetail() {
         </div>
       </div>
 
+      {/* Dialog odstraněn – vstup je v sekci Zápasy (skupiny) */}
+
       <div className="tabs">
         <button className={`tab ${activeTab==='prehled'?'active':''}`} onClick={()=>setActiveTab('prehled')}>Přehled</button>
         <button className={`tab ${activeTab==='hraci'?'active':''}`} onClick={()=>{ setActiveTab('hraci'); fetchTournament(); fetchPlayers(); }}>Hráči</button>
@@ -516,8 +522,8 @@ function TournamentDetail() {
             <div className="info-item">
               <div className="info-icon">👥</div>
               <div className="info-details">
-                <div className="info-label">Maximální počet hráčů</div>
-                <div className="info-value">{tournament.maxPocetHracu} hráčů</div>
+                <div className="info-label">Počet hráčů</div>
+                <div className="info-value">{players.length} hráčů</div>
               </div>
             </div>
 
@@ -528,16 +534,6 @@ function TournamentDetail() {
                 <div className="info-value">{tournament.pocetStolu || 1}</div>
               </div>
             </div>
-            {/* Rozpis zápasů byl odstraněn z přehledu – používá se Berger */}
-            {(tournament.pocetSkupin && tournament.pocetSkupin > 1) && (
-              <div className="info-item">
-                <div className="info-icon">📦</div>
-                <div className="info-details">
-                  <div className="info-label">Počet skupin</div>
-                  <div className="info-value">{tournament.pocetSkupin}</div>
-                </div>
-              </div>
-            )}
             </div>
           </div>
 
@@ -567,11 +563,6 @@ function TournamentDetail() {
           </div>
 
           <div className="action-buttons">
-            {tournament.status === 'nadchazejici' && (
-              <button className="btn-start" onClick={handleStartTournament}>
-                🚀 Zahájit turnaj
-              </button>
-            )}
             <button className="btn-edit" onClick={() => navigate(`/turnaje/${id}/upravit`)}>
               ✏️ Upravit turnaj
             </button>
@@ -591,7 +582,7 @@ function TournamentDetail() {
         {activeTab === 'hraci' && (
           <div className="info-section">
             <div className="section-header">
-              <h2>Hráči ({players.length}/{tournament.maxPocetHracu})</h2>
+              <h2>Hráči ({players.length})</h2>
             </div>
             <form onSubmit={handleAddPlayer} className="add-player-form">
               <div className="form-group-inline">
@@ -606,7 +597,7 @@ function TournamentDetail() {
                 <button 
                   type="submit" 
                   className="btn-add-player"
-                  disabled={players.length >= tournament.maxPocetHracu || tournament.status !== 'nadchazejici'}
+                  disabled={tournament.status !== 'nadchazejici'}
                 >
                   + Přidat hráče
                 </button>
@@ -656,6 +647,7 @@ function TournamentDetail() {
             tournament={tournament}
             matches={matches}
             onStartTournament={handleStartTournament}
+            playersCount={players.length}
             saveMatchResult={saveMatchResult}
             resetMatchResult={resetMatchResult}
             handleMatchStateUpdate={handleMatchStateUpdate}

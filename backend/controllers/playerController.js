@@ -24,20 +24,12 @@ export const addPlayer = (req, res) => {
 
     const db = getDB();
 
-    // Check tournament exists and max players
-    const tournamentResult = db.exec('SELECT maxPocetHracu FROM tournaments WHERE id = ?', [tournamentId]);
-    const maxPlayers = getSingleValue(tournamentResult);
+    // Check tournament exists
+    const tournamentResult = db.exec('SELECT id FROM tournaments WHERE id = ?', [tournamentId]);
+    const tournament = rowToObject(tournamentResult);
 
-    if (!maxPlayers) {
+    if (!tournament) {
       return res.status(404).json({ error: 'Turnaj nebyl nalezen' });
-    }
-
-    // Check current player count
-    const playerCountResult = db.exec('SELECT COUNT(*) FROM players WHERE tournament_id = ?', [tournamentId]);
-    const playerCount = getSingleValue(playerCountResult, 0);
-
-    if (playerCount >= maxPlayers) {
-      return res.status(400).json({ error: `Maximální počet hráčů (${maxPlayers}) byl dosažen` });
     }
 
     // Determine next order within tournament

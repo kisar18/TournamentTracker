@@ -7,6 +7,9 @@ export const startTournament = (req, res) => {
     const db = getDB();
     const tournamentId = parseInt(req.params.id);
 
+  // Get pocetSkupin from request body if provided
+  const pocetSkupin = req.body && req.body.pocetSkupin ? parseInt(req.body.pocetSkupin) : 1;
+
     // Get tournament
     const tournamentResult = db.exec('SELECT * FROM tournaments WHERE id = ?', [tournamentId]);
     const tournament = rowToObject(tournamentResult);
@@ -31,8 +34,8 @@ export const startTournament = (req, res) => {
     let matches = [];
     switch (tournament.typ) {
       case 'skupina':
-        if (tournament.pocetSkupin && tournament.pocetSkupin > 1) {
-          matches = generateGroupedRoundRobinMatches(players, tournament.pocetSkupin, 'berger');
+        if (pocetSkupin > 1) {
+          matches = generateGroupedRoundRobinMatches(players, pocetSkupin, 'berger');
         } else {
           matches = generateRoundRobinMatchesBerger(players);
         }
@@ -43,7 +46,7 @@ export const startTournament = (req, res) => {
       case 'smiseny':
         matches = generateMixedMatches(
           players,
-          tournament.pocetSkupin && tournament.pocetSkupin > 0 ? tournament.pocetSkupin : undefined,
+          pocetSkupin > 0 ? pocetSkupin : undefined,
           'berger'
         );
         break;

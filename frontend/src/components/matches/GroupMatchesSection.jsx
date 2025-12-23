@@ -1,7 +1,10 @@
+import { useState } from 'react';
+
 function GroupMatchesSection({
   tournament,
   matches,
   onStartTournament,
+  playersCount,
   saveMatchResult,
   resetMatchResult,
   handleMatchStateUpdate,
@@ -14,6 +17,7 @@ function GroupMatchesSection({
   getStatusLabel,
   getTableOptions
 }) {
+  const [groupCount, setGroupCount] = useState('1');
   const groupMatches = matches.filter(m => m.round < 900);
 
   const renderMatch = (match) => (
@@ -116,8 +120,23 @@ function GroupMatchesSection({
     <div className="info-section">
       <h2>Zápasy ve skupinách</h2>
       {tournament.status === 'nadchazejici' && (
-        <div style={{marginBottom: '12px'}}>
-          <button className="btn-start" onClick={onStartTournament}>🚀 Zahájit turnaj</button>
+        <div className="group-start-controls">
+          {(tournament.typ === 'skupina' || tournament.typ === 'smiseny') && (
+            <div className="group-count-wrapper">
+              <label htmlFor="pocetSkupin" className="group-count-label">Počet skupin</label>
+              <input
+                type="number"
+                id="pocetSkupin"
+                className="group-count-input"
+                value={groupCount}
+                onChange={(e)=> setGroupCount(e.target.value)}
+                min="1"
+                max={playersCount || undefined}
+              />
+              <span className="group-count-hint">Min 1{playersCount ? `, max ${playersCount}` : ''}</span>
+            </div>
+          )}
+          <button className="btn-start" onClick={()=> onStartTournament(parseInt(groupCount,10) || 1)}>🚀 Zahájit turnaj</button>
         </div>
       )}
       {groupMatches.length === 0 ? (

@@ -713,6 +713,59 @@
   background: #f8fafc;
 }
 
+/* Inline group start controls */
+.group-start-controls {
+  margin-bottom: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.group-count-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.group-count-label {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.group-count-input {
+  width: 96px;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #0f172a;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.group-count-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  background: #fff;
+}
+
+/* Remove number input spinners for cleaner look */
+.group-count-input::-webkit-outer-spin-button,
+.group-count-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.group-count-input {
+  -moz-appearance: textfield;
+}
+
+.group-count-hint {
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
 @media screen and (max-width: 768px) {
   .tournament-detail-container {
     padding: 1rem;
@@ -737,5 +790,99 @@
 
   .match-vs {
     transform: rotate(90deg);
+
+  /* Modal/Dialog Styles */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .modal-content {
+    background: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    width: 90%;
+  }
+
+  .modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+    color: #1e3a8a;
+  }
+
+  .modal-content p {
+    margin-bottom: 1.5rem;
+    color: #475569;
+  }
+
+  .modal-content .form-group {
+    margin-bottom: 1.5rem;
+  }
+
+  .modal-content .form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    color: #0f172a;
+  }
+
+  .modal-content .form-group input {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    font-size: 1rem;
+  }
+
+  .modal-content .form-group small {
+    display: block;
+    margin-top: 0.5rem;
+    color: #64748b;
+    font-size: 0.875rem;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+  }
+
+  .modal-actions .btn-secondary,
+  .modal-actions .btn-primary {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s;
+  }
+
+  .modal-actions .btn-secondary {
+    background-color: #e2e8f0;
+    color: #0f172a;
+  }
+
+  .modal-actions .btn-secondary:hover {
+    background-color: #cbd5e1;
+  }
+
+  .modal-actions .btn-primary {
+    background-color: #2563eb;
+    color: white;
+  }
+
+  .modal-actions .btn-primary:hover {
+    background-color: #1e40af;
+  }
   }
 }
