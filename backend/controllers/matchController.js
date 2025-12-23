@@ -93,6 +93,20 @@ export const getMatches = (req, res) => {
     `, [tournamentId]);
 
     const matches = rowsToObjects(result);
+
+    // Derive group letter (A, B, ...) and per-group match numbering for round-robin groups
+    const groupCounters = new Map();
+    matches.forEach(m => {
+      if (m.round < 900) {
+        const groupIndex = m.round >= 100 ? Math.floor(m.round / 100) - 1 : 0; // 0-based
+        const groupLetter = String.fromCharCode(65 + groupIndex);
+        const nextNumber = (groupCounters.get(groupIndex) || 0) + 1;
+        groupCounters.set(groupIndex, nextNumber);
+        m.groupLetter = groupLetter;
+        m.matchNumberInGroup = nextNumber;
+      }
+    });
+
     res.json(matches);
   } catch (error) {
     console.error('Error fetching matches:', error);

@@ -20,10 +20,7 @@ function GroupMatchesSection({
     <div key={match.id} className="match-item">
       <div className="match-meta">
         <div className="match-meta-left">
-          <div className="match-number">Zápas {match.match_number}</div>
-          {match.round < 900 && Math.floor(match.round / 100) > 0 && (
-            <span className="match-group-badge">Skupina {Math.floor(match.round / 100)}</span>
-          )}
+          <div className="match-number">Zápas {match.groupLetter || '?'}{match.matchNumberInGroup || match.match_number}</div>
         </div>
         <div className="match-badges">
           <span className={`status-chip status-${match.status || 'nehrany'}`}>

@@ -93,21 +93,24 @@ export const getStandings = (req, res) => {
 
     // Round-robin tournament - if matches are encoded by groups, compute per group
     if (tournament.typ === 'skupina') {
-      const hasEncodedGroups = finishedMatches.some(m => m.round < 900 && m.round >= 100);
+      const hasEncodedGroups = allGroupMatches.some(m => m.round < 900 && m.round >= 100);
       if (!hasEncodedGroups) {
         const playersResult = db.exec('SELECT id FROM players WHERE tournament_id = ?', [tournamentId]);
         const playerIds = rowsToObjects(playersResult).map(p => p.id);
         const standings = computeStandings(playerIds, finishedMatches, getPlayerName);
         return res.json({ type: tournament.typ, standings });
       } else {
-        const groupMatches = finishedMatches.filter(m => m.round < 900);
-        const groups = groupMatchesByGroup(groupMatches);
+        const finishedGroupMatches = finishedMatches.filter(m => m.round < 900);
+        const allGroupMap = groupMatchesByGroup(allGroupMatches.filter(m => m.round < 900));
+        const finishedGroupMap = groupMatchesByGroup(finishedGroupMatches);
 
         const result = [];
-        Array.from(groups.keys()).sort((a, b) => a - b).forEach(groupNum => {
-          const matches = groups.get(groupNum);
-          const playerIds = getUniquePlayerIds(matches);
-          const standings = computeStandings(playerIds, matches, getPlayerName);
+        const groupKeys = Array.from(allGroupMap.keys()).sort((a, b) => a - b);
+        groupKeys.forEach(groupNum => {
+          const allMatchesForGroup = allGroupMap.get(groupNum) || [];
+          const finishedForGroup = finishedGroupMap.get(groupNum) || [];
+          const playerIds = getUniquePlayerIds(allMatchesForGroup);
+          const standings = computeStandings(playerIds, finishedForGroup, getPlayerName);
           result.push({ group: groupNum, standings });
         });
 
@@ -116,14 +119,17 @@ export const getStandings = (req, res) => {
     }
 
     // Mixed tournament - compute per group
-    const groupMatches = finishedMatches.filter(m => m.round < 900);
-    const groups = groupMatchesByGroup(groupMatches);
+    const finishedGroupMatches = finishedMatches.filter(m => m.round < 900);
+    const allGroupMap = groupMatchesByGroup(allGroupMatches.filter(m => m.round < 900));
+    const finishedGroupMap = groupMatchesByGroup(finishedGroupMatches);
 
     const result = [];
-    Array.from(groups.keys()).sort((a, b) => a - b).forEach(groupNum => {
-      const matches = groups.get(groupNum);
-      const playerIds = getUniquePlayerIds(matches);
-      const standings = computeStandings(playerIds, matches, getPlayerName);
+    const groupKeys = Array.from(allGroupMap.keys()).sort((a, b) => a - b);
+    groupKeys.forEach(groupNum => {
+      const allMatchesForGroup = allGroupMap.get(groupNum) || [];
+      const finishedForGroup = finishedGroupMap.get(groupNum) || [];
+      const playerIds = getUniquePlayerIds(allMatchesForGroup);
+      const standings = computeStandings(playerIds, finishedForGroup, getPlayerName);
       result.push({ group: groupNum, standings });
     });
 

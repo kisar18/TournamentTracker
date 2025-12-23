@@ -1,6 +1,59 @@
 // Match generation algorithms for different tournament types
 
 /**
+ * Berger tables lookup - exact pairings from official tables
+ * Format: [home, away] for each match in each round
+ * Tables for even numbers (4, 6, 8, 10, 12)
+ */
+const BERGER_TABLES = {
+  4: [ // 3 rounds
+    [[1,4], [2,3]],
+    [[4,3], [1,2]],
+    [[2,4], [3,1]]
+  ],
+  6: [ // 5 rounds
+    [[1,6], [2,5], [3,4]],
+    [[6,4], [5,3], [1,2]],
+    [[2,6], [3,1], [4,5]],
+    [[6,5], [1,4], [2,3]],
+    [[3,6], [4,2], [5,1]]
+  ],
+  8: [ // 7 rounds
+    [[1,8], [2,7], [3,6], [4,5]],
+    [[8,5], [6,4], [7,3], [1,2]],
+    [[2,8], [3,1], [4,7], [5,6]],
+    [[8,6], [7,5], [1,4], [2,3]],
+    [[3,8], [4,2], [5,1], [6,7]],
+    [[8,7], [1,6], [2,5], [3,4]],
+    [[4,8], [5,3], [6,2], [7,1]]
+  ],
+  10: [ // 9 rounds
+    [[1,10], [2,9], [3,8], [4,7], [5,6]],
+    [[10,6], [7,5], [8,4], [9,3], [1,2]],
+    [[2,10], [3,1], [4,9], [5,8], [6,7]],
+    [[10,7], [8,6], [9,5], [1,4], [2,3]],
+    [[3,10], [4,2], [5,1], [6,9], [7,8]],
+    [[10,8], [9,7], [1,6], [2,5], [3,4]],
+    [[4,10], [5,3], [6,2], [7,1], [8,9]],
+    [[10,9], [1,8], [2,7], [3,6], [4,5]],
+    [[5,10], [6,4], [7,3], [8,2], [9,1]]
+  ],
+  12: [ // 11 rounds
+    [[1,12], [2,11], [3,10], [4,9], [5,8], [6,7]],
+    [[12,7], [8,6], [9,5], [10,4], [11,3], [1,2]],
+    [[2,12], [3,1], [4,11], [5,10], [6,9], [7,8]],
+    [[12,8], [9,7], [10,6], [11,5], [1,4], [2,3]],
+    [[3,12], [4,2], [5,1], [6,11], [7,10], [8,9]],
+    [[12,9], [10,8], [11,7], [1,6], [2,5], [3,4]],
+    [[4,12], [5,3], [6,2], [7,1], [8,11], [9,10]],
+    [[12,10], [11,9], [1,8], [2,7], [3,6], [4,5]],
+    [[5,12], [6,4], [7,3], [8,2], [9,1], [10,11]],
+    [[12,11], [1,10], [2,9], [3,8], [4,7], [5,6]],
+    [[6,12], [7,5], [8,4], [9,3], [10,2], [11,1]]
+  ]
+};
+
+/**
  * Generate round-robin matches using Berger tables system
  * @param {Array} players - Array of player objects with id and jmeno
  * @returns {Array} Array of matches with round and match_number
@@ -58,76 +111,50 @@ export function generateRoundRobinMatches(players) {
 }
 
 /**
- * Generate round-robin matches using Berger tables order
+ * Generate round-robin matches using official Berger tables (lookup-based)
+ * Uses hardcoded pairings from official Berger rotation tables
+ * 
  * @param {Array} players - Array of player objects with id and jmeno
  * @returns {Array} Array of matches with round and match_number
  */
 export function generateRoundRobinMatchesBerger(players) {
   const matches = [];
-  let playerIds = players.map(p => ({ id: p.id, jmeno: p.jmeno }));
+  let playerList = players.map(p => ({ id: p.id, jmeno: p.jmeno }));
 
   // Add BYE if odd
-  const isOdd = playerIds.length % 2 !== 0;
+  const isOdd = playerList.length % 2 !== 0;
   if (isOdd) {
-    playerIds.push({ id: null, jmeno: 'BYE' });
+    playerList.push({ id: null, jmeno: 'BYE' });
   }
 
-  const n = playerIds.length;
-  const R = n - 1;
-  const indices = [...Array(n - 1).keys()].map(i => i + 1); // 1..n-1
-
-  // Helper to get player by label (1..n)
-  const getPlayer = (label) => (label === n ? playerIds[n - 1] : playerIds[label - 1]);
-
-  // Build rounds per r using canonical Berger pairing
-  const rounds = [];
-  for (let r = 1; r <= R; r++) {
-    const roundMatches = [];
-    // Team n vs team r
-    const a = getPlayer(n);
-    const b = getPlayer(r);
-    if (a.id !== null && b.id !== null) {
-      roundMatches.push({ player1_id: a.id, player2_id: b.id });
-    }
-
-    // Other pairs
-    for (let i = 1; i <= (n / 2) - 1; i++) {
-      const homeLabel = ((r + i - 2) % (n - 1)) + 1;
-      const awayLabel = ((r - i - 1 + (n - 1)) % (n - 1)) + 1;
-      const p1 = getPlayer(homeLabel);
-      const p2 = getPlayer(awayLabel);
-      if (p1.id !== null && p2.id !== null) {
-        roundMatches.push({ player1_id: p1.id, player2_id: p2.id });
-      }
-    }
-    rounds.push(roundMatches);
+  const n = playerList.length;
+  
+  // Check if we have a Berger table for this size
+  if (!BERGER_TABLES[n]) {
+    // Fallback to algorithmic approach for unsupported sizes
+    return generateRoundRobinMatches(players);
   }
 
-  // Reorder rounds to typical Berger display order: 1, R-1, 2, R, 3, R-2, ...
-  const order = [];
-  let left = 1;
-  let right = R;
-  let toggle = true;
-  while (order.length < R) {
-    order.push(left);
-    left += 1;
-    if (order.length < R) {
-      order.push(right - 1);
-      right -= 1;
-    }
-  }
-
+  const table = BERGER_TABLES[n];
   let matchNumber = 1;
-  order.forEach((rIndex, roundIdx) => {
-    const rm = rounds[rIndex - 1];
-    rm.forEach(m => {
-      matches.push({
-        round: roundIdx + 1,
-        match_number: matchNumber++,
-        player1_id: m.player1_id,
-        player2_id: m.player2_id,
-        status: 'nehrany'
-      });
+
+  // Generate matches from lookup table
+  table.forEach((round, roundIdx) => {
+    round.forEach(([home, away]) => {
+      // Convert 1-based indices to 0-based
+      const p1 = playerList[home - 1];
+      const p2 = playerList[away - 1];
+      
+      // Only add match if both players are real (not BYE with null id)
+      if (p1.id !== null && p2.id !== null) {
+        matches.push({
+          round: roundIdx + 1,
+          match_number: matchNumber++,
+          player1_id: p1.id,
+          player2_id: p2.id,
+          status: 'nehrany'
+        });
+      }
     });
   });
 
@@ -155,10 +182,14 @@ export function generateGroupedRoundRobinMatches(players, numGroups, scheduleTyp
     const groupMatches = scheduleType === 'berger'
       ? generateRoundRobinMatchesBerger(groupPlayers)
       : generateRoundRobinMatches(groupPlayers);
+    const groupLetter = String.fromCharCode(65 + groupIndex);
+    let matchNumberInGroup = 1;
     groupMatches.forEach(m => {
       matches.push({
         round: (groupIndex + 1) * 100 + m.round,
         match_number: globalMatchNumber++,
+        groupLetter: groupLetter,
+        matchNumberInGroup: matchNumberInGroup++,
         player1_id: m.player1_id,
         player2_id: m.player2_id,
         status: m.status
@@ -259,15 +290,19 @@ export function generateMixedMatches(players, numGroupsOptional, scheduleType = 
   });
 
   // Generate round-robin matches for each group
-  let matchNumber = 1;
+  let globalMatchNumber = 1;
   groups.forEach((groupPlayers, groupIndex) => {
     const groupMatches = scheduleType === 'berger'
       ? generateRoundRobinMatchesBerger(groupPlayers)
       : generateRoundRobinMatches(groupPlayers);
+    const groupLetter = String.fromCharCode(65 + groupIndex);
+    let matchNumberInGroup = 1;
     groupMatches.forEach(match => {
       matches.push({
         ...match,
-        match_number: matchNumber++,
+        match_number: globalMatchNumber++,
+        groupLetter: groupLetter,
+        matchNumberInGroup: matchNumberInGroup++,
         round: (groupIndex + 1) * 100 + match.round
       });
     });
